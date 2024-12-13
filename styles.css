@@ -98,6 +98,7 @@ button:active {
     box-shadow: 0 0 20px #00000044;
     border-radius: 20px;
     color: #FF9E00;
+    text-shadow: none;
 }
 
 .loading {

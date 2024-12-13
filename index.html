@@ -21,7 +21,7 @@
         <h1>Amigo Secreto</h1>
         <!-- Formulário de Sorteio -->
         <div id="drawSection">
-            <button id="sortearButton">Sortear</button>
+            <button id="sortearButton">Sorteio</button>
         </div>
     </div>
 
@@ -45,7 +45,7 @@
         // Firebase SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
         import { getFirestore, collection, getDocs, updateDoc, query, where, doc } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
-        import { getDatabase, ref, set, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js";
+        import { getDatabase, ref, set, remove, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js";
 
         // Configuração do Firebase
         const firebaseConfig = {
@@ -117,10 +117,15 @@
         // Função para registrar a entrada de um usuário online
         function updateUserStatus(isOnline) {
             const userRef = ref(database, 'online/' + userId);  // Usando um ID único para a sessão
-            set(userRef, {
-                timestamp: serverTimestamp(),
-                status: isOnline
-            });
+            if (isOnline) {
+                set(userRef, {
+                    timestamp: serverTimestamp(),
+                    status: isOnline
+                });
+            } else {
+                // Remove o usuário quando ele sai da página
+                remove(userRef);
+            }
         }
 
         // Monitorando quando o usuário vai online ou offline
@@ -130,7 +135,7 @@
 
             // Monitorar quando o usuário sai da página e atualizar o status para offline
             window.addEventListener("beforeunload", () => {
-                updateUserStatus(false);
+                updateUserStatus(false);  // Status offline e removendo o usuário
             });
         });
 
