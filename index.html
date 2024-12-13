@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amigo Secreto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.5.0/remixicon.css">
+</head>
+<body>
+    <p id="onlineCount"><i class="ri-live-fill"></i> 0</p>
+    <div id="resultado">
+        <p>Seu amigo secreto:</p>
+        <p id="mensagemResultado"></p>
+    </div>
+    <div class="loading">
+        <div class="spinner"></div>
+    </div>
+    <div class="container">
+        <h1>Amigo Secreto</h1>
+        <!-- Formulário de Sorteio -->
+        <div id="drawSection">
+            <button id="sortearButton">Sortear</button>
+        </div>
+    </div>
+
+    <!-- Usando módulos do Firebase -->
+    <script type="module">
+        function openLoading() {
+            const loading = document.querySelector('.loading');
+            loading.style.display = "flex";
+        }
+
+        function closeLoading() {
+            const loading = document.querySelector('.loading');
+            loading.style.display = "none";
+        }
+
+        function openResult() {
+            const loading = document.getElementById('resultado');
+            loading.style.display = "flex";
+        }
+
+        // Firebase SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+        import { getFirestore, collection, getDocs, updateDoc, query, where, doc } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+        import { getDatabase, ref, set, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js";
+
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDYOVavpO-zwiW45HGD24j0g9boiasCskU",
+            authDomain: "amigo-secreto-33055.firebaseapp.com",
+            projectId: "amigo-secreto-33055",
+            storageBucket: "amigo-secreto-33055.firebasestorage.app",
+            messagingSenderId: "49762286905",
+            appId: "1:49762286905:web:185a62c467d0675dc5fce8"
+        };
+
+        // Inicializando o Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const database = getDatabase(app);
+
+        // Função de sorteio
+        async function sortearAmigo() {
+            openLoading();  // Exibe o loading imediatamente
+            
+            try {
+                // Recolhendo todos os participantes que ainda não foram sorteados
+                const participantesRef = query(collection(db, "participantes"), where("sorteado", "==", false));
+                const snapshot = await getDocs(participantesRef);
+
+                if (snapshot.empty) {
+                    document.getElementById('mensagemResultado').textContent = "Todos já foram sorteados!";
+                    setTimeout(() => {
+                        openResult();  // Exibe o resultado após o delay de 2 segundos.
+                        closeLoading();  // Fecha o loading depois do delay.
+                    }, 2000); // Delay de 2 segundos
+                    return; // Sai da função
+                }
+
+                const participantes = snapshot.docs.map(doc => doc.data().name);
+                const randomIndex = Math.floor(Math.random() * participantes.length);
+                const amigoSorteado = participantes[randomIndex];
+
+                // Atualizando Firestore para que a pessoa não seja sorteada novamente
+                const amigoDoc = doc(db, "participantes", amigoSorteado);
+                await updateDoc(amigoDoc, { sorteado: true });
+
+                // Exibir o resultado após o delay de 2 segundos
+                setTimeout(() => {
+                    document.getElementById('mensagemResultado').textContent = `${amigoSorteado}`;
+                    openResult();  // Exibe o resultado.
+                    closeLoading();  // Fecha o loading.
+                }, 2000); // Delay de 2 segundos
+            } catch (error) {
+                console.error("Erro ao sortear o amigo secreto:", error);
+                document.getElementById('mensagemResultado').textContent = "Erro no sorteio. Tente novamente!";
+                setTimeout(() => {
+                    openResult();  // Exibe o erro após o delay de 2 segundos.
+                    closeLoading();  // Fecha o loading.
+                }, 2000); // Delay de 2 segundos
+            }
+        }
+
+        // Atribuindo a função ao botão quando o DOM é carregado
+        document.getElementById("sortearButton").addEventListener("click", sortearAmigo);
+
+        // Gerando ID único para cada visita usando sessionStorage
+        const userId = sessionStorage.getItem('userId') || Date.now();
+        sessionStorage.setItem('userId', userId);
+
+        // Referência para o contador de usuários online
+        const onlineRef = ref(database, 'online/');
+
+        // Função para registrar a entrada de um usuário online
+        function updateUserStatus(isOnline) {
+            const userRef = ref(database, 'online/' + userId);  // Usando um ID único para a sessão
+            set(userRef, {
+                timestamp: serverTimestamp(),
+                status: isOnline
+            });
+        }
+
+        // Monitorando quando o usuário vai online ou offline
+        window.addEventListener("load", () => {
+            // Definir status do usuário como online ao carregar a página
+            updateUserStatus(true);
+
+            // Monitorar quando o usuário sai da página e atualizar o status para offline
+            window.addEventListener("beforeunload", () => {
+                updateUserStatus(false);
+            });
+        });
+
+        // Monitorando a contagem de usuários online em tempo real
+        onValue(onlineRef, (snapshot) => {
+            const data = snapshot.val();
+            const onlineCount = Object.values(data || {}).filter(user => user.status === true).length;  // Contando os que estão online
+            document.getElementById('onlineCount').innerHTML = `<i class="ri-live-fill"></i> ${onlineCount}`;
+        });
+
+    </script>
+</body>
+</html>
